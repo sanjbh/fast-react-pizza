@@ -11,6 +11,7 @@ export const fetchAddress = createAsyncThunk(
   "user/fetchAddress",
   async function () {
     const positionObj = await getPosition();
+
     const position = {
       latitude: positionObj.coords.latitude,
       longitude: positionObj.coords.longitude,

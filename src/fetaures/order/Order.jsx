@@ -1,6 +1,6 @@
 // Test ID: IIDSAT
 
-import { useLoaderData } from "react-router-dom";
+import { useFetcher, useLoaderData } from "react-router-dom";
 import { getOrder } from "../../services/apiRestaurant";
 import {
   calcMinutesLeft,
@@ -8,6 +8,7 @@ import {
   formatDate,
 } from "../../utils/helpers";
 import OrderItem from "../order/OrderItem";
+import { useEffect } from "react";
 
 /* const order = {
   id: "ABCDEF",
@@ -58,6 +59,13 @@ function Order() {
     cart,
   } = order;
   const deliveryIn = calcMinutesLeft(estimatedDelivery);
+  const fetcher = useFetcher();
+
+  useEffect(() => {
+    if (!fetcher.data && fetcher.state === "idle") {
+      fetcher.load("/menu");
+    }
+  }, [fetcher]);
 
   return (
     <div className="gap-2 space-y-8 px-4 py-6">
