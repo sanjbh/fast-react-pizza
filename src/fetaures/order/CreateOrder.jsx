@@ -1,6 +1,13 @@
 import { Form, redirect, useActionData, useNavigation } from "react-router-dom";
 import { createOrder } from "../../services/apiRestaurant";
 import Button from "../../ui/Button";
+import { useDispatch, useSelector } from "react-redux";
+import { clearCart, getCart, getTotalCartPrice } from "../cart/cartSlice";
+import EmptyCart from "../cart/EmptyCart";
+import store from "../../store";
+import { useState } from "react";
+import { formatCurrency } from "../../utils/helpers";
+import { fetchAddress } from "../user/userSlice";
 
 // https://uibakery.io/regex-library/phone-number
 const isValidPhone = (str) =>
@@ -8,7 +15,7 @@ const isValidPhone = (str) =>
     str,
   );
 
-const fakeCart = [
+/* const fakeCart = [
   {
     pizzaId: 12,
     name: "Mediterranean",
@@ -30,23 +37,37 @@ const fakeCart = [
     unitPrice: 15,
     totalPrice: 15,
   },
-];
+]; */
 
 function CreateOrder() {
-  // const [withPriority, setWithPriority] = useState(false);
-  const cart = fakeCart;
+  const [withPriority, setWithPriority] = useState(false);
+  //const cart = useSelector((state) => state.cart.cart);
+  const cart = useSelector(getCart);
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const formErrors = useActionData();
+  const userName = useSelector((state) => state.user.userName);
+  const totalCartPrice = useSelector(getTotalCartPrice);
+  const priorityPrice = withPriority ? totalCartPrice * 0.2 : 0;
+  const dispatch = useDispatch();
+
+  if (!cart.length) return <EmptyCart />;
 
   return (
     <div className="px-4 py-6">
       <h2 className="mb-8 text-xl font-semibold">Ready to order? Let's go!</h2>
+      <button onClick={() => dispatch(fetchAddress())}>Try Geolocation</button>
 
       <Form method="POST">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="sm:basis-40">First Name</label>
-          <input type="text" name="customer" required className="input grow" />
+          <input
+            type="text"
+            name="customer"
+            required
+            className="input grow"
+            defaultValue={userName}
+          />
         </div>
 
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -79,8 +100,8 @@ function CreateOrder() {
             name="priority"
             id="priority"
             className="h-6 w-6 accent-yellow-400 focus:outline-none focus:ring focus:ring-yellow-400 focus:ring-offset-2"
-            // value={withPriority}
-            // onChange={(e) => setWithPriority(e.target.checked)}
+            value={withPriority}
+            onChange={(e) => setWithPriority(e.target.checked)}
           />
           <label htmlFor="priority" className="font-medium">
             Want to yo give your order priority?
@@ -89,14 +110,10 @@ function CreateOrder() {
 
         <div>
           <input type="hidden" name="cart" value={JSON.stringify(cart)} />
-          {/* <button
-            disabled={isSubmitting}
-            className="semi-bold focus: rounded-full bg-yellow-400 px-4 py-3 font-semibold uppercase tracking-wide text-stone-800 outline-none transition-colors duration-300 hover:bg-yellow-300 focus:bg-yellow-300 focus:ring focus:ring-yellow-300 focus:ring-offset-2 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Placing order..." : "Order now"}
-          </button> */}
           <Button isDisabled={isSubmitting} type="primary">
-            {isSubmitting ? "Placing order..." : "Order now"}
+            {isSubmitting
+              ? "Placing order..."
+              : `Order now with ${formatCurrency(totalCartPrice + priorityPrice)}`}
           </Button>
         </div>
       </Form>
@@ -111,7 +128,7 @@ export async function action({ request }) {
   const order = {
     ...data,
     cart: JSON.parse(data.cart),
-    priority: data.priority === "on",
+    priority: data.priority === "true",
   };
 
   console.log(order);
@@ -125,6 +142,8 @@ export async function action({ request }) {
   if (Object.keys(errors).length > 0) return errors;
 
   const newOrder = await createOrder(order);
+
+  store.dispatch(clearCart());
 
   return redirect(`/order/${newOrder.id}`);
 }
